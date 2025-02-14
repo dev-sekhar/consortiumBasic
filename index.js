@@ -1,5 +1,6 @@
 const { startAPIServer } = require("./usecase/api");
 const Blockchain = require("./core/blockchain");
+const { miningInterval } = require("./usecase/parameters");
 
 async function initializeBlockchain() {
   try {
@@ -56,7 +57,7 @@ async function initializeBlockchain() {
     const approveData = await approveResponse.json();
     console.info("First member approved:", approveData);
 
-    // Set up periodic mining every 10 minutes (600,000 milliseconds)
+    // Set up periodic mining using the interval from parameters.js
     setInterval(async () => {
       try {
         const mineResponse = await fetch("http://localhost:3000/mine", {
@@ -67,7 +68,7 @@ async function initializeBlockchain() {
       } catch (error) {
         console.error("Error during periodic mining:", error);
       }
-    }, 600000); // 10 minutes in milliseconds
+    }, miningInterval); // Use the mining interval from parameters.js
   } catch (error) {
     console.error("Error initializing blockchain:", error);
   }

@@ -2,9 +2,14 @@ const express = require("express");
 const cors = require("cors"); // Import the CORS middleware
 const { Chaincode } = require("./chaincode");
 const Blockchain = require("../core/blockchain");
-const Transaction = require("../core/transaction");
-const { createMember } = require("./createMember");
-const TransactionTypes = require("../core/transactionTypes");
+const {
+  registerMember,
+  approveTransaction,
+  rejectTransaction,
+  getApprovedMembers,
+  getPendingMembers,
+  getRejectedMembers,
+} = require("./memberService");
 
 function startAPIServer(blockchain) {
   const chaincode = new Chaincode(blockchain); // Initialize chaincode with blockchain
@@ -55,6 +60,15 @@ function startAPIServer(blockchain) {
    */
   app.get("/mine", (req, res) => {
     try {
+      if (blockchain.pendingTransactions.length === 0) {
+        console.info("No pending transactions. No new block created.");
+        // Send a message to all connected nodes (this is a placeholder, replace with actual implementation)
+        // sendMessageToAllNodes("No pending transactions. No new block created.");
+        return res.json({
+          message: "No pending transactions. No new block created.",
+        });
+      }
+
       blockchain.minePendingTransactions();
 
       console.info("Block mined successfully.");
@@ -127,26 +141,16 @@ function startAPIServer(blockchain) {
           .json({ error: "Missing required fields (memberType, name)" });
       }
 
-      const memberTransaction = await createMember(memberType, {
+      const result = await registerMember(
+        blockchain,
+        memberType,
         name,
         age,
         city,
-        business,
-      });
-
-      chaincode.createTransaction(memberTransaction);
-
-      console.info(`${memberType} member registered successfully.`);
-      console.info(
-        "Current pending transactions:",
-        blockchain.pendingTransactions
+        business
       );
 
-      res.status(201).json({
-        message: `${memberType} member registered successfully.`,
-        transactionId: memberTransaction.transactionId,
-        status: "pending",
-      });
+      res.status(201).json(result);
     } catch (error) {
       console.error("API: Error creating member:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -171,63 +175,13 @@ function startAPIServer(blockchain) {
         });
       }
 
-      // Bypass approval check for the first member
-      if (memberName !== "System") {
-        // Check if the approving member is approved
-        const approvingMember = blockchain.chain
-          .flatMap((block) => block.transactions)
-          .find(
-            (transaction) =>
-              transaction.memberRegistration &&
-              transaction.memberRegistration.name === memberName &&
-              transaction.approvedBy
-          );
-
-        if (!approvingMember) {
-          return res.status(403).json({
-            error: "Only approved members can approve other members",
-          });
-        }
-      }
-
-      // Find the transaction in the pending transactions
-      const transaction = blockchain.pendingTransactions.find(
-        (tx) => tx.transactionId === transactionId
+      const result = await approveTransaction(
+        blockchain,
+        memberName,
+        transactionId
       );
 
-      if (!transaction) {
-        console.error(
-          `Transaction ${transactionId} not found in pending transactions.`
-        );
-        return res.status(404).json({ error: "Transaction not found" });
-      }
-
-      // Ensure the transaction has not already been approved
-      if (transaction.approvedBy) {
-        return res.status(400).json({
-          error: "Transaction has already been approved",
-        });
-      }
-
-      // Approve the transaction
-      transaction.approvedBy = memberName;
-
-      // Move the transaction from pending to the blockchain
-      blockchain.pendingTransactions = blockchain.pendingTransactions.filter(
-        (tx) => tx.transactionId !== transactionId
-      );
-      blockchain.createTransaction(transaction);
-
-      console.info(`Transaction ${transactionId} approved by ${memberName}.`);
-      console.info(
-        "Current blockchain state:",
-        JSON.stringify(blockchain.chain, null, 2)
-      );
-
-      res.status(200).json({
-        message: `Transaction ${transactionId} approved by ${memberName}.`,
-        status: "approved",
-      });
+      res.status(200).json(result);
     } catch (error) {
       console.error("API: Error approving transaction:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -253,61 +207,14 @@ function startAPIServer(blockchain) {
         });
       }
 
-      // Check if the rejecting member is approved
-      const rejectingMember = blockchain.chain
-        .flatMap((block) => block.transactions)
-        .find(
-          (transaction) =>
-            transaction.memberRegistration &&
-            transaction.memberRegistration.name === memberName &&
-            transaction.approvedBy
-        );
-
-      if (!rejectingMember) {
-        return res.status(403).json({
-          error: "Only approved members can reject other members",
-        });
-      }
-
-      // Find the transaction in the pending transactions
-      const transaction = blockchain.pendingTransactions.find(
-        (tx) => tx.transactionId === transactionId
+      const result = await rejectTransaction(
+        blockchain,
+        memberName,
+        transactionId,
+        reason
       );
 
-      if (!transaction) {
-        console.error(
-          `Transaction ${transactionId} not found in pending transactions.`
-        );
-        return res.status(404).json({ error: "Transaction not found" });
-      }
-
-      // Ensure the transaction has not already been approved or rejected
-      if (transaction.approvedBy || transaction.rejectedBy) {
-        return res.status(400).json({
-          error: "Transaction has already been approved or rejected",
-        });
-      }
-
-      // Reject the transaction
-      transaction.rejectedBy = memberName;
-      transaction.rejectionReason = reason;
-
-      // Move the transaction from pending to the blockchain
-      blockchain.pendingTransactions = blockchain.pendingTransactions.filter(
-        (tx) => tx.transactionId !== transactionId
-      );
-      blockchain.createTransaction(transaction);
-
-      console.info(`Transaction ${transactionId} rejected by ${memberName}.`);
-      console.info(
-        "Current blockchain state:",
-        JSON.stringify(blockchain.chain, null, 2)
-      );
-
-      res.status(200).json({
-        message: `Transaction ${transactionId} rejected by ${memberName}.`,
-        status: "rejected",
-      });
+      res.status(200).json(result);
     } catch (error) {
       console.error("API: Error rejecting transaction:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -322,20 +229,7 @@ function startAPIServer(blockchain) {
    */
   app.get("/approved-members", (req, res) => {
     try {
-      const approvedMembers = blockchain.chain
-        .flatMap((block) => block.transactions)
-        .filter(
-          (transaction) =>
-            transaction.memberRegistration && transaction.approvedBy
-        )
-        .map((transaction) => ({
-          name: transaction.memberRegistration.name,
-          attributes: transaction.memberRegistration.attributes,
-          approvedBy: transaction.approvedBy,
-          status: "approved",
-        }));
-
-      console.info("Approved members retrieved:", approvedMembers);
+      const approvedMembers = getApprovedMembers(blockchain);
 
       res.json(approvedMembers);
     } catch (error) {
@@ -352,15 +246,7 @@ function startAPIServer(blockchain) {
    */
   app.get("/pending-members", (req, res) => {
     try {
-      const pendingMembers = blockchain.pendingTransactions
-        .filter((transaction) => transaction.memberRegistration)
-        .map((transaction) => ({
-          name: transaction.memberRegistration.name,
-          attributes: transaction.memberRegistration.attributes,
-          status: "pending",
-        }));
-
-      console.info("Pending members retrieved:", pendingMembers);
+      const pendingMembers = getPendingMembers(blockchain);
 
       res.json(pendingMembers);
     } catch (error) {
@@ -377,21 +263,7 @@ function startAPIServer(blockchain) {
    */
   app.get("/rejected-members", (req, res) => {
     try {
-      const rejectedMembers = blockchain.chain
-        .flatMap((block) => block.transactions)
-        .filter(
-          (transaction) =>
-            transaction.memberRegistration && transaction.rejectedBy
-        )
-        .map((transaction) => ({
-          name: transaction.memberRegistration.name,
-          attributes: transaction.memberRegistration.attributes,
-          rejectedBy: transaction.rejectedBy,
-          rejectionReason: transaction.rejectionReason,
-          status: "rejected",
-        }));
-
-      console.info("Rejected members retrieved:", rejectedMembers);
+      const rejectedMembers = getRejectedMembers(blockchain);
 
       res.json(rejectedMembers);
     } catch (error) {

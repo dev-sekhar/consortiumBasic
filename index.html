@@ -20,7 +20,7 @@
       display: block;
       margin-bottom: 5px;
     }
-    .form-group input, .form-group textarea {
+    .form-group input, .form-group select {
       width: 100%;
       padding: 8px;
       box-sizing: border-box;
@@ -65,20 +65,20 @@
     <div class="form-group">
       <h2>Approve Member</h2>
       <label for="approvingMember">Approving Member Name:</label>
-      <input type="text" id="approvingMember" placeholder="Approving Member Name">
+      <select id="approvingMember"></select>
       <label for="transactionId">Transaction ID:</label>
-      <input type="text" id="transactionId" placeholder="Transaction ID">
+      <select id="transactionId"></select>
       <button onclick="approveMember()">Approve Member</button>
     </div>
 
     <div class="form-group">
       <h2>Reject Member</h2>
       <label for="rejectingMember">Rejecting Member Name:</label>
-      <input type="text" id="rejectingMember" placeholder="Rejecting Member Name">
+      <select id="rejectingMember"></select>
       <label for="rejectTransactionId">Transaction ID:</label>
-      <input type="text" id="rejectTransactionId" placeholder="Transaction ID">
-      <label for="rejectReason">Reason for Rejection:</label>
-      <textarea id="rejectReason" placeholder="Reason for rejection"></textarea>
+      <select id="rejectTransactionId"></select>
+      <label for="rejectionReason">Reason for Rejection:</label>
+      <input type="text" id="rejectionReason" placeholder="Reason for Rejection">
       <button onclick="rejectMember()">Reject Member</button>
     </div>
 
@@ -163,7 +163,7 @@
     async function rejectMember() {
       const memberName = document.getElementById('rejectingMember').value;
       const transactionId = document.getElementById('rejectTransactionId').value;
-      const reason = document.getElementById('rejectReason').value;
+      const reason = document.getElementById('rejectionReason').value;
       console.log('Rejecting member:', memberName, 'Transaction ID:', transactionId, 'Reason:', reason); // Log the inputs
       try {
         const response = await fetch(`${apiUrl}/reject-transaction`, {
@@ -250,6 +250,45 @@
         console.error('Error viewing blockchain:', error); // Log any errors
       }
     }
+
+    async function populateDropdowns() {
+      try {
+        // Populate approving member dropdown
+        const approvedMembersResponse = await fetch(`${apiUrl}/approved-members`, {
+          method: 'GET'
+        });
+        const approvedMembers = await approvedMembersResponse.json();
+        const approvingMemberDropdown = document.getElementById('approvingMember');
+        approvingMemberDropdown.innerHTML = approvedMembers.map(member => `<option value="${member.name}">${member.name}</option>`).join('');
+
+        // Populate transaction ID dropdown for approval
+        const pendingTransactionsResponse = await fetch(`${apiUrl}/pending-transactions`, {
+          method: 'GET'
+        });
+        const pendingTransactions = await pendingTransactionsResponse.json();
+        const transactionIdDropdown = document.getElementById('transactionId');
+        transactionIdDropdown.innerHTML = pendingTransactions
+          .filter(transaction => transaction.message.includes('Member Registration'))
+          .map(transaction => `<option value="${transaction.transactionId}">${transaction.transactionId}</option>`)
+          .join('');
+
+        // Populate rejecting member dropdown
+        const rejectingMemberDropdown = document.getElementById('rejectingMember');
+        rejectingMemberDropdown.innerHTML = approvedMembers.map(member => `<option value="${member.name}">${member.name}</option>`).join('');
+
+        // Populate transaction ID dropdown for rejection
+        const rejectTransactionIdDropdown = document.getElementById('rejectTransactionId');
+        rejectTransactionIdDropdown.innerHTML = pendingTransactions
+          .filter(transaction => transaction.message.includes('Member Registration'))
+          .map(transaction => `<option value="${transaction.transactionId}">${transaction.transactionId}</option>`)
+          .join('');
+      } catch (error) {
+        console.error('Error populating dropdowns:', error); // Log any errors
+      }
+    }
+
+    // Populate dropdowns on page load
+    window.onload = populateDropdowns;
   </script>
 </body>
 </html>
