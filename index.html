@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blockchain Consortium</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    .form-group button {
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .form-group button:hover {
+      background-color: #0056b3;
+    }
+    .output {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Blockchain Consortium</h1>
+
+    <div class="form-group">
+      <h2>Register Member</h2>
+      <label for="memberType">Member Type:</label>
+      <input type="text" id="memberType" placeholder="e.g., first, second">
+      <label for="memberName">Name:</label>
+      <input type="text" id="memberName" placeholder="Name">
+      <label for="memberAge">Age:</label>
+      <input type="text" id="memberAge" placeholder="Age">
+      <label for="memberCity">City:</label>
+      <input type="text" id="memberCity" placeholder="City">
+      <label for="memberBusiness">Business:</label>
+      <input type="text" id="memberBusiness" placeholder="Business">
+      <button onclick="registerMember()">Register Member</button>
+    </div>
+
+    <div class="form-group">
+      <h2>Approve Member</h2>
+      <label for="approvingMember">Approving Member Name:</label>
+      <input type="text" id="approvingMember" placeholder="Approving Member Name">
+      <label for="transactionId">Transaction ID:</label>
+      <input type="text" id="transactionId" placeholder="Transaction ID">
+      <button onclick="approveMember()">Approve Member</button>
+    </div>
+
+    <div class="form-group">
+      <h2>Reject Member</h2>
+      <label for="rejectingMember">Rejecting Member Name:</label>
+      <input type="text" id="rejectingMember" placeholder="Rejecting Member Name">
+      <label for="rejectTransactionId">Transaction ID:</label>
+      <input type="text" id="rejectTransactionId" placeholder="Transaction ID">
+      <label for="rejectReason">Reason for Rejection:</label>
+      <textarea id="rejectReason" placeholder="Reason for rejection"></textarea>
+      <button onclick="rejectMember()">Reject Member</button>
+    </div>
+
+    <div class="form-group">
+      <h2>Mine Transactions</h2>
+      <button onclick="mineTransactions()">Mine Transactions</button>
+    </div>
+
+    <div class="form-group">
+      <h2>View Approved Members</h2>
+      <button onclick="viewApprovedMembers()">View Approved Members</button>
+      <div id="approvedMembers" class="output"></div>
+    </div>
+
+    <div class="form-group">
+      <h2>View Pending Members</h2>
+      <button onclick="viewPendingMembers()">View Pending Members</button>
+      <div id="pendingMembers" class="output"></div>
+    </div>
+
+    <div class="form-group">
+      <h2>View Rejected Members</h2>
+      <button onclick="viewRejectedMembers()">View Rejected Members</button>
+      <div id="rejectedMembers" class="output"></div>
+    </div>
+
+    <div class="form-group">
+      <h2>View Blockchain</h2>
+      <button onclick="viewBlockchain()">View Blockchain</button>
+      <div id="blockchain" class="output"></div>
+    </div>
+  </div>
+
+  <script>
+    const apiUrl = 'http://localhost:3000';
+
+    async function registerMember() {
+      const memberType = document.getElementById('memberType').value;
+      const name = document.getElementById('memberName').value;
+      const age = document.getElementById('memberAge').value;
+      const city = document.getElementById('memberCity').value;
+      const business = document.getElementById('memberBusiness').value;
+
+      console.log('Registering member:', memberType, name, age, city, business); // Log the member details
+
+      try {
+        const response = await fetch(`${apiUrl}/member`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ memberType, name, age, city, business })
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        alert(data.message);
+      } catch (error) {
+        console.error('Error registering member:', error); // Log any errors
+      }
+    }
+
+    async function approveMember() {
+      const memberName = document.getElementById('approvingMember').value;
+      const transactionId = document.getElementById('transactionId').value;
+      console.log('Approving member:', memberName, 'Transaction ID:', transactionId); // Log the inputs
+      try {
+        const response = await fetch(`${apiUrl}/approve-transaction`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ memberName, transactionId })
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        alert(data.message);
+      } catch (error) {
+        console.error('Error approving member:', error); // Log any errors
+      }
+    }
+
+    async function rejectMember() {
+      const memberName = document.getElementById('rejectingMember').value;
+      const transactionId = document.getElementById('rejectTransactionId').value;
+      const reason = document.getElementById('rejectReason').value;
+      console.log('Rejecting member:', memberName, 'Transaction ID:', transactionId, 'Reason:', reason); // Log the inputs
+      try {
+        const response = await fetch(`${apiUrl}/reject-transaction`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ memberName, transactionId, reason })
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        alert(data.message);
+      } catch (error) {
+        console.error('Error rejecting member:', error); // Log any errors
+      }
+    }
+
+    async function mineTransactions() {
+      console.log('Mining transactions'); // Log the action
+      try {
+        const response = await fetch(`${apiUrl}/mine`, {
+          method: 'GET'
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        alert(data.message);
+      } catch (error) {
+        console.error('Error mining transactions:', error); // Log any errors
+      }
+    }
+
+    async function viewApprovedMembers() {
+      console.log('Viewing approved members'); // Log the action
+      try {
+        const response = await fetch(`${apiUrl}/approved-members`, {
+          method: 'GET'
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        document.getElementById('approvedMembers').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error('Error viewing approved members:', error); // Log any errors
+      }
+    }
+
+    async function viewPendingMembers() {
+      console.log('Viewing pending members'); // Log the action
+      try {
+        const response = await fetch(`${apiUrl}/pending-members`, {
+          method: 'GET'
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        document.getElementById('pendingMembers').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error('Error viewing pending members:', error); // Log any errors
+      }
+    }
+
+    async function viewRejectedMembers() {
+      console.log('Viewing rejected members'); // Log the action
+      try {
+        const response = await fetch(`${apiUrl}/rejected-members`, {
+          method: 'GET'
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        document.getElementById('rejectedMembers').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error('Error viewing rejected members:', error); // Log any errors
+      }
+    }
+
+    async function viewBlockchain() {
+      console.log('Viewing blockchain'); // Log the action
+      try {
+        const response = await fetch(`${apiUrl}/chain`, {
+          method: 'GET'
+        });
+        const data = await response.json();
+        console.log('Response:', data); // Log the response
+        document.getElementById('blockchain').innerText = JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error('Error viewing blockchain:', error); // Log any errors
+      }
+    }
+  </script>
+</body>
+</html>
