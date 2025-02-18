@@ -1,6 +1,13 @@
 const { createMember } = require("./createMember");
 
-async function registerMember(blockchain, memberType, name, age, city, business) {
+async function registerMember(
+  blockchain,
+  memberType,
+  name,
+  age,
+  city,
+  business
+) {
   const memberTransaction = await createMember(memberType, {
     name,
     age,
@@ -8,7 +15,22 @@ async function registerMember(blockchain, memberType, name, age, city, business)
     business,
   });
 
-  blockchain.createTransaction(memberTransaction);
+  // Check if there are any approved members
+  const approvedMembers = blockchain.chain
+    .flatMap((block) => block.transactions)
+    .filter(
+      (transaction) => transaction.memberRegistration && transaction.approvedBy
+    );
+
+  // Automatically approve the first member
+  if (approvedMembers.length === 0) {
+    memberTransaction.approvedBy = "System";
+    blockchain.addTransactionToMiningQueue(memberTransaction);
+    blockchain.minePendingTransactions();
+    console.info("First member automatically approved.");
+  } else {
+    blockchain.pendingTransactions.push(memberTransaction);
+  }
 
   console.info(`${memberType} member registered successfully.`);
   console.info("Current pending transactions:", blockchain.pendingTransactions);
@@ -16,26 +38,23 @@ async function registerMember(blockchain, memberType, name, age, city, business)
   return {
     message: `${memberType} member registered successfully.`,
     transactionId: memberTransaction.transactionId,
-    status: "pending",
+    status: memberTransaction.approvedBy ? "approved" : "pending",
   };
 }
 
 async function approveTransaction(blockchain, memberName, transactionId) {
-  // Bypass approval check for the first member
-  if (memberName !== "System") {
-    // Check if the approving member is approved
-    const approvingMember = blockchain.chain
-      .flatMap((block) => block.transactions)
-      .find(
-        (transaction) =>
-          transaction.memberRegistration &&
-          transaction.memberRegistration.name === memberName &&
-          transaction.approvedBy
-      );
+  // Check if the approving member is approved
+  const approvingMember = blockchain.chain
+    .flatMap((block) => block.transactions)
+    .find(
+      (transaction) =>
+        transaction.memberRegistration &&
+        transaction.memberRegistration.name === memberName &&
+        transaction.approvedBy
+    );
 
-    if (!approvingMember) {
-      throw new Error("Only approved members can approve other members");
-    }
+  if (!approvingMember) {
+    throw new Error("Only approved members can approve other members");
   }
 
   // Find the transaction in the pending transactions
@@ -55,14 +74,17 @@ async function approveTransaction(blockchain, memberName, transactionId) {
   // Approve the transaction
   transaction.approvedBy = memberName;
 
-  // Move the transaction from pending to the blockchain
+  // Move the transaction from pending to the mining queue
   blockchain.pendingTransactions = blockchain.pendingTransactions.filter(
     (tx) => tx.transactionId !== transactionId
   );
-  blockchain.createTransaction(transaction);
+  blockchain.addTransactionToMiningQueue(transaction);
 
   console.info(`Transaction ${transactionId} approved by ${memberName}.`);
-  console.info("Current blockchain state:", JSON.stringify(blockchain.chain, null, 2));
+  console.info(
+    "Current blockchain state:",
+    JSON.stringify(blockchain.chain, null, 2)
+  );
 
   return {
     message: `Transaction ${transactionId} approved by ${memberName}.`,
@@ -70,7 +92,12 @@ async function approveTransaction(blockchain, memberName, transactionId) {
   };
 }
 
-async function rejectTransaction(blockchain, memberName, transactionId, reason) {
+async function rejectTransaction(
+  blockchain,
+  memberName,
+  transactionId,
+  reason
+) {
   // Check if the rejecting member is approved
   const rejectingMember = blockchain.chain
     .flatMap((block) => block.transactions)
@@ -103,14 +130,17 @@ async function rejectTransaction(blockchain, memberName, transactionId, reason) 
   transaction.rejectedBy = memberName;
   transaction.rejectionReason = reason;
 
-  // Move the transaction from pending to the blockchain
+  // Move the transaction from pending to the mining queue
   blockchain.pendingTransactions = blockchain.pendingTransactions.filter(
     (tx) => tx.transactionId !== transactionId
   );
-  blockchain.createTransaction(transaction);
+  blockchain.addTransactionToMiningQueue(transaction);
 
   console.info(`Transaction ${transactionId} rejected by ${memberName}.`);
-  console.info("Current blockchain state:", JSON.stringify(blockchain.chain, null, 2));
+  console.info(
+    "Current blockchain state:",
+    JSON.stringify(blockchain.chain, null, 2)
+  );
 
   return {
     message: `Transaction ${transactionId} rejected by ${memberName}.`,
@@ -122,8 +152,7 @@ function getApprovedMembers(blockchain) {
   const approvedMembers = blockchain.chain
     .flatMap((block) => block.transactions)
     .filter(
-      (transaction) =>
-        transaction.memberRegistration && transaction.approvedBy
+      (transaction) => transaction.memberRegistration && transaction.approvedBy
     )
     .map((transaction) => ({
       name: transaction.memberRegistration.name,
@@ -155,8 +184,7 @@ function getRejectedMembers(blockchain) {
   const rejectedMembers = blockchain.chain
     .flatMap((block) => block.transactions)
     .filter(
-      (transaction) =>
-        transaction.memberRegistration && transaction.rejectedBy
+      (transaction) => transaction.memberRegistration && transaction.rejectedBy
     )
     .map((transaction) => ({
       name: transaction.memberRegistration.name,

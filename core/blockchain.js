@@ -1,66 +1,51 @@
-const Block = require("./block");
-const Transaction = require("./transaction");
+const crypto = require("crypto");
 
 class Blockchain {
   constructor() {
-    this.chain = []; // Initialize the chain as an empty array
-    this.pendingTransactions = []; // Initialize pending transactions
+    this.chain = [];
+    this.pendingTransactions = [];
+    this.miningQueue = [];
   }
 
   createGenesisBlock(transactions) {
-    const genesisBlock = new Block(0, Date.now(), transactions, "0");
-    genesisBlock.hash = genesisBlock.calculateHash();
-    this.chain.push(genesisBlock);
-    return genesisBlock;
+    return this.createBlock(transactions, "0");
   }
 
-  getLatestBlock() {
-    return this.chain[this.chain.length - 1];
+  createBlock(transactions, previousHash) {
+    const block = {
+      index: this.chain.length,
+      timestamp: Date.now(),
+      transactions,
+      previousHash,
+      hash: this.calculateHash(
+        this.chain.length,
+        Date.now(),
+        transactions,
+        previousHash
+      ),
+    };
+    this.chain.push(block);
+    return block;
   }
 
-  addBlock(newBlock) {
-    newBlock.previousHash = this.getLatestBlock().hash;
-    newBlock.hash = newBlock.calculateHash();
-    this.chain.push(newBlock);
-  }
-
-  isChainValid() {
-    for (let i = 1; i < this.chain.length; i++) {
-      const currentBlock = this.chain[i];
-      const previousBlock = this.chain[i - 1];
-
-      if (currentBlock.hash !== currentBlock.calculateHash()) {
-        return false;
-      }
-
-      if (currentBlock.previousHash !== previousBlock.hash) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  createTransaction(transaction) {
-    this.pendingTransactions.push(transaction);
-    console.info("Transaction added to pending transactions:", transaction);
+  calculateHash(index, timestamp, transactions, previousHash) {
+    return crypto
+      .createHash("sha256")
+      .update(index + timestamp + JSON.stringify(transactions) + previousHash)
+      .digest("hex");
   }
 
   minePendingTransactions() {
-    const newBlock = new Block(
-      this.chain.length,
-      Date.now(),
-      this.pendingTransactions,
-      this.getLatestBlock().hash
-    );
-    newBlock.hash = newBlock.calculateHash(); // Calculate hash
-    this.addBlock(newBlock);
-
-    this.pendingTransactions = []; // Reset pending transactions
-    console.info("Block mined:", newBlock);
+    if (this.miningQueue.length === 0) {
+      console.info("No transactions in the mining queue. Skipping mining.");
+      return;
+    }
+    this.createBlock(this.miningQueue, this.chain[this.chain.length - 1].hash);
+    this.miningQueue = [];
   }
 
-  toJSON() {
-    return this.chain.map((block) => block.toJSON()); // Correctly serialize blocks
+  addTransactionToMiningQueue(transaction) {
+    this.miningQueue.push(transaction);
   }
 }
 

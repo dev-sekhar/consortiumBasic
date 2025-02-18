@@ -1,77 +1,72 @@
+const readline = require("readline");
 const { startAPIServer } = require("./usecase/api");
 const Blockchain = require("./core/blockchain");
+const { registerMember } = require("./usecase/memberService");
 const { miningInterval } = require("./usecase/parameters");
 
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
 async function initializeBlockchain() {
-  try {
-    const blockchain = new Blockchain();
+  const blockchain = new Blockchain();
 
-    const welcomeTransaction = {
-      from: "0",
-      to: "Consensus Network",
-      amount: 0,
-      message: "Welcome to Consensus Blockchain",
-      memberRegistration: null,
-    };
+  const welcomeTransaction = {
+    from: "0",
+    to: "Consensus Network",
+    amount: 0,
+    message: "Welcome to Consensus Blockchain",
+    memberRegistration: null,
+    status: "approved", // Set the status to approved
+    approvedBy: "System",
+  };
 
-    blockchain.chain = [blockchain.createGenesisBlock([welcomeTransaction])];
+  blockchain.createGenesisBlock([welcomeTransaction]);
 
-    console.info("Blockchain initialized successfully.");
+  console.info("Blockchain initialized successfully.");
 
-    startAPIServer(blockchain); // Pass the blockchain instance to the API server
+  rl.question("Enter the first member's name: ", (name) => {
+    rl.question("Enter the first member's age: ", (age) => {
+      rl.question("Enter the first member's city: ", (city) => {
+        rl.question("Enter the first member's business: ", async (business) => {
+          const memberType = "first";
+          const result = await registerMember(
+            blockchain,
+            memberType,
+            name,
+            age,
+            city,
+            business
+          );
 
-    // Dynamically import node-fetch
-    const fetch = (await import("node-fetch")).default;
+          console.info("First member registered:", result);
 
-    // Register the first member
-    const registerResponse = await fetch("http://localhost:3000/member", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        memberType: "first",
-        name: "First Member",
-        age: "N/A",
-        city: "N/A",
-        business: "N/A",
-      }),
-    });
-    const registerData = await registerResponse.json();
-    console.info("First member registered:", registerData);
+          // Mine the first block with the first member registration
+          blockchain.minePendingTransactions();
 
-    // Approve the first member
-    const approveResponse = await fetch(
-      "http://localhost:3000/approve-transaction",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          memberName: "System",
-          transactionId: registerData.transactionId,
-        }),
-      }
-    );
-    const approveData = await approveResponse.json();
-    console.info("First member approved:", approveData);
+          // Set up periodic mining based on the miningInterval after the first block is mined
+          setTimeout(() => {
+            setInterval(() => {
+              if (blockchain.miningQueue.length > 0) {
+                console.info("Triggering automatic mining...");
+                blockchain.minePendingTransactions();
+              } else {
+                const timestamp = new Date().toISOString();
+                console.info(
+                  `No transactions in the mining queue. Skipping mining. [${timestamp}]`
+                );
+              }
+            }, miningInterval);
+          }, miningInterval);
 
-    // Set up periodic mining using the interval from parameters.js
-    setInterval(async () => {
-      try {
-        const mineResponse = await fetch("http://localhost:3000/mine", {
-          method: "GET",
+          startAPIServer(blockchain, name); // Pass the blockchain instance and first member's name to the API server
+
+          rl.close();
         });
-        const mineData = await mineResponse.json();
-        console.info("Mining result:", mineData);
-      } catch (error) {
-        console.error("Error during periodic mining:", error);
-      }
-    }, miningInterval); // Use the mining interval from parameters.js
-  } catch (error) {
-    console.error("Error initializing blockchain:", error);
-  }
+      });
+    });
+  });
 }
 
 initializeBlockchain();

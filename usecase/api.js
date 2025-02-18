@@ -10,6 +10,7 @@ const {
   getPendingMembers,
   getRejectedMembers,
 } = require("./memberService");
+const { mineBlock, getBlockchain, getMiningQueue } = require("./blockService");
 
 function startAPIServer(blockchain) {
   const chaincode = new Chaincode(blockchain); // Initialize chaincode with blockchain
@@ -60,20 +61,8 @@ function startAPIServer(blockchain) {
    */
   app.get("/mine", (req, res) => {
     try {
-      if (blockchain.pendingTransactions.length === 0) {
-        console.info("No pending transactions. No new block created.");
-        // Send a message to all connected nodes (this is a placeholder, replace with actual implementation)
-        // sendMessageToAllNodes("No pending transactions. No new block created.");
-        return res.json({
-          message: "No pending transactions. No new block created.",
-        });
-      }
-
-      blockchain.minePendingTransactions();
-
-      console.info("Block mined successfully.");
-
-      res.json({ message: "New block mined." });
+      const result = mineBlock(blockchain);
+      res.json(result);
     } catch (error) {
       console.error("Error mining block:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -88,12 +77,7 @@ function startAPIServer(blockchain) {
    */
   app.get("/chain", (req, res) => {
     try {
-      const chain = chaincode.getChain();
-
-      const jsonChain = chain.map((block) => block.toJSON());
-
-      console.info("Blockchain retrieved:", jsonChain);
-
+      const jsonChain = getBlockchain(chaincode);
       res.json(jsonChain);
     } catch (error) {
       console.error("Error getting chain:", error);
@@ -268,6 +252,22 @@ function startAPIServer(blockchain) {
       res.json(rejectedMembers);
     } catch (error) {
       console.error("Error getting rejected members:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  /**
+   * @route GET /mining-queue
+   * @desc Retrieves the mining queue.
+   * @returns {array} - An array representing the mining queue.
+   * @throws {Error} - If there's an error retrieving the mining queue.
+   */
+  app.get("/mining-queue", (req, res) => {
+    try {
+      const miningQueue = getMiningQueue(blockchain);
+      res.json(miningQueue);
+    } catch (error) {
+      console.error("Error getting mining queue:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
