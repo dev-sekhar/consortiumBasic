@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors"); // Import the CORS middleware
+const fs = require("fs");
 const { Chaincode } = require("./chaincode");
 const Blockchain = require("../core/blockchain");
 const {
@@ -18,6 +19,11 @@ function startAPIServer(blockchain) {
   const app = express();
   app.use(cors()); // Enable CORS
   app.use(express.json());
+
+  // Read member attributes from JSON file
+  const memberAttributes = JSON.parse(
+    fs.readFileSync("./usecase/data/memberAttributes.json", "utf8")
+  ).attributes;
 
   /**
    * @route POST /transaction
@@ -109,15 +115,13 @@ function startAPIServer(blockchain) {
    * @desc Adds a new member to the blockchain.
    * @param {string} memberType - The type of the member (e.g., "second").
    * @param {string} name - The name of the member.
-   * @param {string} age - The age of the member.
-   * @param {string} city - The city of the member.
-   * @param {string} business - The business of the member.
+   * @param {object} attributes - The attributes of the member.
    * @returns {object} - A success message or an error object.
    * @throws {Error} - If there's an issue adding the member.
    */
   app.post("/member", async (req, res) => {
     try {
-      const { memberType, name, age, city, business } = req.body;
+      const { memberType, name, ...attributes } = req.body;
 
       if (!memberType || !name) {
         return res
@@ -125,14 +129,24 @@ function startAPIServer(blockchain) {
           .json({ error: "Missing required fields (memberType, name)" });
       }
 
-      const result = await registerMember(
-        blockchain,
-        memberType,
-        name,
-        age,
-        city,
-        business
+      // Validate attributes
+      const missingAttributes = memberAttributes.filter(
+        (attr) => !attributes.hasOwnProperty(attr)
       );
+      if (missingAttributes.length > 0) {
+        return res
+          .status(400)
+          .json({
+            error: `Missing required attributes: ${missingAttributes.join(
+              ", "
+            )}`,
+          });
+      }
+
+      const result = await registerMember(blockchain, memberType, {
+        name,
+        ...attributes,
+      });
 
       res.status(201).json(result);
     } catch (error) {

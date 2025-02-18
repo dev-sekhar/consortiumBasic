@@ -1,19 +1,21 @@
 const { createMember } = require("./createMember");
+const TransactionTypes = require("../core/transactionTypes");
+const memberAttributes = require("./data/memberAttributes.json");
 
-async function registerMember(
-  blockchain,
-  memberType,
-  name,
-  age,
-  city,
-  business
-) {
+async function registerMember(blockchain, memberType, memberDetails) {
+  // Include the attributes from memberAttributes.json
+  const attributes = memberAttributes.attributes.reduce((acc, attr) => {
+    acc[attr] = memberDetails[attr] || "";
+    return acc;
+  }, {});
+
   const memberTransaction = await createMember(memberType, {
-    name,
-    age,
-    city,
-    business,
+    name: memberDetails.name,
+    attributes,
   });
+
+  // Add transactionType to the transaction
+  memberTransaction.transactionType = TransactionTypes.MEMBER_REGISTRATION;
 
   // Check if there are any approved members
   const approvedMembers = blockchain.chain
@@ -73,6 +75,7 @@ async function approveTransaction(blockchain, memberName, transactionId) {
 
   // Approve the transaction
   transaction.approvedBy = memberName;
+  transaction.transactionType = TransactionTypes.MEMBER_APPROVAL;
 
   // Move the transaction from pending to the mining queue
   blockchain.pendingTransactions = blockchain.pendingTransactions.filter(
@@ -129,6 +132,7 @@ async function rejectTransaction(
   // Reject the transaction
   transaction.rejectedBy = memberName;
   transaction.rejectionReason = reason;
+  transaction.transactionType = TransactionTypes.MEMBER_REJECTION;
 
   // Move the transaction from pending to the mining queue
   blockchain.pendingTransactions = blockchain.pendingTransactions.filter(

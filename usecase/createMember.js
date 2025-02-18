@@ -1,27 +1,32 @@
 const { v4: uuidv4 } = require("uuid");
-const Transaction = require("../core/transaction");
-const TransactionTypes = require("../core/transactionTypes");
+const memberAttributes = require("./data/memberAttributes.json");
 
-async function createMember(memberType, attributes) {
-  const transaction = new Transaction(
-    "0",
-    "Consensus Network",
-    0,
-    `${TransactionTypes.MEMBER_REGISTRATION}: ${memberType}`,
-    {
-      name: attributes.name,
-      attributes: {
-        age: attributes.age,
-        city: attributes.city,
-        business: attributes.business,
-      },
-    }
-  );
+async function createMember(memberType, memberDetails) {
+  const transactionId = uuidv4();
+  const timestamp = Date.now();
 
-  transaction.transactionId = uuidv4();
-  transaction.timestamp = Date.now();
+  // Include the attributes from memberAttributes.json
+  const attributes = memberAttributes.attributes.reduce((acc, attr) => {
+    acc[attr] = memberDetails[attr] || "";
+    return acc;
+  }, {});
 
-  return transaction;
+  console.log("Attributes being added to the member:", attributes); // Log the attributes for debugging
+
+  const memberTransaction = {
+    transactionId,
+    from: "0",
+    to: "Consensus Network",
+    amount: 0,
+    timestamp,
+    message: `Member Registration: ${memberType}`,
+    memberRegistration: {
+      name: memberDetails.name,
+      attributes,
+    },
+  };
+
+  return memberTransaction;
 }
 
 module.exports = { createMember };
