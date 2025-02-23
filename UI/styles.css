@@ -50,3 +50,30 @@ th, td {
 .hash-column {
   word-break: break-all;
 }
+
+.tab {
+  display: none;
+}
+
+.tab.active {
+  display: block;
+}
+
+.menu {
+  display: flex;
+  justify-content: space-around;
+  background-color: #f1f1f1;
+  padding: 10px;
+}
+
+.menu button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.menu button.active {
+  background-color: #45a049;
+}

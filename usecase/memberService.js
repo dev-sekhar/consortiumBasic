@@ -1,18 +1,36 @@
 const { createMember } = require("./createMember");
 const TransactionTypes = require("../core/transactionTypes");
-const memberAttributes = require("./data/memberAttributes.json");
+const path = require("path");
+const fs = require("fs");
+
+// Read member attributes from JSON file
+const memberAttributes = JSON.parse(
+  fs.readFileSync(
+    path.join(__dirname, "../usecase/data/memberAttributes.json"),
+    "utf8"
+  )
+);
 
 async function registerMember(blockchain, memberType, memberDetails) {
+  console.log("memberService.js - Member details received:", memberDetails); // Log the member details received
+
   // Include the attributes from memberAttributes.json
   const attributes = memberAttributes.attributes.reduce((acc, attr) => {
-    acc[attr] = memberDetails[attr] || "";
+    acc[attr.name] = memberDetails[attr.name] || "";
     return acc;
   }, {});
+
+  console.log("memberService.js - Processed attributes:", attributes); // Log the processed attributes
 
   const memberTransaction = await createMember(memberType, {
     name: memberDetails.name,
     attributes,
   });
+
+  console.log(
+    "memberService.js - Attributes being added to the member:",
+    JSON.stringify(memberTransaction.memberRegistration.attributes, null, 2)
+  ); // Log the attributes being added to the member
 
   // Add transactionType to the transaction
   memberTransaction.transactionType = TransactionTypes.MEMBER_REGISTRATION;
@@ -34,8 +52,11 @@ async function registerMember(blockchain, memberType, memberDetails) {
     blockchain.pendingTransactions.push(memberTransaction);
   }
 
-  console.info(`${memberType} member registered successfully.`);
-  console.info("Current pending transactions:", blockchain.pendingTransactions);
+  console.info("memberService.js - Member registered successfully.");
+  console.info(
+    "memberService.js - Current pending transactions:",
+    JSON.stringify(blockchain.pendingTransactions, null, 2)
+  );
 
   return {
     message: `${memberType} member registered successfully.`,
@@ -165,7 +186,10 @@ function getApprovedMembers(blockchain) {
       status: "approved",
     }));
 
-  console.info("Approved members retrieved:", approvedMembers);
+  console.info(
+    "Approved members retrieved:",
+    JSON.stringify(approvedMembers, null, 2)
+  ); // Log the approved members
 
   return approvedMembers;
 }
@@ -179,7 +203,10 @@ function getPendingMembers(blockchain) {
       status: "pending",
     }));
 
-  console.info("Pending members retrieved:", pendingMembers);
+  console.info(
+    "Pending members retrieved:",
+    JSON.stringify(pendingMembers, null, 2)
+  );
 
   return pendingMembers;
 }
@@ -198,7 +225,10 @@ function getRejectedMembers(blockchain) {
       status: "rejected",
     }));
 
-  console.info("Rejected members retrieved:", rejectedMembers);
+  console.info(
+    "Rejected members retrieved:",
+    JSON.stringify(rejectedMembers, null, 2)
+  );
 
   return rejectedMembers;
 }

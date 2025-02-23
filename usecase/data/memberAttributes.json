@@ -1,3 +1,53 @@
 {
-    "attributes": ["age", "city","business","gps"]
-  }
+  "attributes": [
+    {
+      "name": "memberType",
+      "mandatory": true,
+      "validation": {
+        "type": "string",
+        "enum": ["first", "second", "third"]
+      }
+    },
+    {
+      "name": "name",
+      "mandatory": true,
+      "validation": {
+        "type": "string",
+        "maxLength": 50
+      }
+    },
+    {
+      "name": "age",
+      "mandatory": true,
+      "validation": {
+        "type": "number",
+        "min": 0,
+        "max": 120
+      }
+    },
+    {
+      "name": "city",
+      "mandatory": true,
+      "validation": {
+        "type": "string",
+        "regex": "^[a-zA-Z ]+$"
+      }
+    },
+    {
+      "name": "business",
+      "mandatory": true,
+      "validation": {
+        "type": "string",
+        "maxLength": 50
+      }
+    },
+    {
+      "name": "gps",
+      "mandatory": false,
+      "validation": {
+        "type": "string",
+        "regex": "^[+-]?([1-8]?\\d(\\.\\d+)?|90(\\.0+)?),\\s*[+-]?(180(\\.0+)?|((1[0-7]\\d)|(\\d{1,2}))(\\.\\d+)?)$"
+      }
+    }
+  ]
+}

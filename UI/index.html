@@ -10,15 +10,29 @@
   <div class="container">
     <h1>Blockchain Consortium</h1>
 
-    <div class="form-group">
-      <h2>Register Member</h2>
-      <label for="memberType">Member Type:</label>
-      <input type="text" id="memberType" placeholder="e.g., first, second">
-      <div id="dynamicAttributes"></div>
-      <button onclick="registerMember()">Register Member</button>
+    <div class="menu">
+      <button class="tablink" onclick="openTab('registerMember')">Register Member</button>
+      <button class="tablink" onclick="openTab('approveMember')">Approve Member</button>
+      <button class="tablink" onclick="openTab('rejectMember')">Reject Member</button>
+      <button class="tablink" onclick="openTab('mineTransactions')">Mine Transactions</button>
+      <button class="tablink" onclick="openTab('viewApprovedMembers')">View Approved Members</button>
+      <button class="tablink" onclick="openTab('viewPendingMembers')">View Pending Members</button>
+      <button class="tablink" onclick="openTab('viewRejectedMembers')">View Rejected Members</button>
+      <button class="tablink" onclick="openTab('viewBlockchain')">View Blockchain</button>
+      <button class="tablink" onclick="openTab('viewMiningQueue')">View Mining Queue</button>
     </div>
 
-    <div class="form-group">
+    <div id="registerMember" class="tab active">
+      <h2>Register Member</h2>
+      <form id="memberRegistrationForm">
+        <div id="dynamicAttributes">
+          <!-- Attributes will be dynamically loaded here -->
+        </div>
+        <button type="submit">Register Member</button>
+      </form>
+    </div>
+
+    <div id="approveMember" class="tab">
       <h2>Approve Member</h2>
       <label for="approvingMember">Approving Member Name:</label>
       <select id="approvingMember"></select>
@@ -27,7 +41,7 @@
       <button onclick="approveMember()">Approve Member</button>
     </div>
 
-    <div class="form-group">
+    <div id="rejectMember" class="tab">
       <h2>Reject Member</h2>
       <label for="rejectingMember">Rejecting Member Name:</label>
       <select id="rejectingMember"></select>
@@ -38,36 +52,36 @@
       <button onclick="rejectMember()">Reject Member</button>
     </div>
 
-    <div class="form-group">
+    <div id="mineTransactions" class="tab">
       <h2>Mine Transactions</h2>
       <button onclick="mineTransactions()">Mine Transactions</button>
     </div>
 
-    <div class="form-group">
+    <div id="viewApprovedMembers" class="tab">
       <h2>View Approved Members</h2>
       <button onclick="viewApprovedMembers()">View Approved Members</button>
       <div id="approvedMembers" class="output"></div>
     </div>
 
-    <div class="form-group">
+    <div id="viewPendingMembers" class="tab">
       <h2>View Pending Members</h2>
       <button onclick="viewPendingMembers()">View Pending Members</button>
       <div id="pendingMembers" class="output"></div>
     </div>
 
-    <div class="form-group">
+    <div id="viewRejectedMembers" class="tab">
       <h2>View Rejected Members</h2>
       <button onclick="viewRejectedMembers()">View Rejected Members</button>
       <div id="rejectedMembers" class="output"></div>
     </div>
 
-    <div class="form-group">
+    <div id="viewBlockchain" class="tab">
       <h2>View Blockchain</h2>
       <button onclick="viewBlockchain()">View Blockchain</button>
       <div id="blockchain" class="output"></div>
     </div>
 
-    <div class="form-group">
+    <div id="viewMiningQueue" class="tab">
       <h2>View Mining Queue</h2>
       <button onclick="viewMiningQueue()">View Mining Queue</button>
       <div id="miningQueue" class="output"></div>

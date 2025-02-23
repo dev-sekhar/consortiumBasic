@@ -35,12 +35,17 @@ function getBlockchain(chaincode) {
 }
 
 function getMiningQueue(blockchain) {
-  const miningQueue = blockchain.miningQueue.map((tx) => ({
-    ...tx,
-    status: "approved",
+  return blockchain.miningQueue.map((transaction) => ({
+    ...transaction,
+    memberRegistration: {
+      ...transaction.memberRegistration,
+      attributes: JSON.stringify(
+        transaction.memberRegistration.attributes,
+        null,
+        2
+      ),
+    },
   }));
-  console.info("Mining queue retrieved:", miningQueue);
-  return miningQueue;
 }
 
 module.exports = {

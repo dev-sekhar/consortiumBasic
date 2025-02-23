@@ -19,9 +19,9 @@ async function initializeBlockchain() {
     amount: 0,
     message: "Welcome to Consensus Blockchain",
     memberRegistration: null,
-    status: "approved", // Set the status to approved
+    status: "approved",
     approvedBy: "System",
-    transactionType: "Welcome Transaction",
+    transactionType: "Genesis Block",
   };
 
   blockchain.createGenesisBlock([welcomeTransaction]);
@@ -37,10 +37,11 @@ async function initializeBlockchain() {
     const answers = {};
     const askNext = (index) => {
       if (index < attributes.length) {
+        const attribute = attributes[index];
         rl.question(
-          `Enter the first member's ${attributes[index]}: `,
+          `Enter the first member's ${attribute.name}: `,
           (answer) => {
-            answers[attributes[index]] = answer;
+            answers[attribute.name] = answer;
             askNext(index + 1);
           }
         );
@@ -51,38 +52,36 @@ async function initializeBlockchain() {
     askNext(0);
   };
 
-  rl.question("Enter the first member's name: ", (name) => {
-    askQuestions(memberAttributes, async (answers) => {
-      const memberType = "first";
-      const result = await registerMember(blockchain, memberType, {
-        name,
-        ...answers,
-      });
+  askQuestions(memberAttributes, async (answers) => {
+    console.log("index.js - Answers received:", answers); // Log the answers received
 
-      console.info("First member registered:", result);
+    const memberType = "first";
+    console.log("index.js - Registering member with attributes:", answers); // Log the attributes being passed to registerMember
+    const result = await registerMember(blockchain, memberType, answers);
 
-      // Mine the first block with the first member registration
-      blockchain.minePendingTransactions();
+    console.info("index.js - First member registered:", result);
 
-      // Set up periodic mining based on the miningInterval after the first block is mined
-      setTimeout(() => {
-        setInterval(() => {
-          if (blockchain.miningQueue.length > 0) {
-            console.info("Triggering automatic mining...");
-            blockchain.minePendingTransactions();
-          } else {
-            const timestamp = new Date().toISOString();
-            console.info(
-              `No transactions in the mining queue. Skipping mining. [${timestamp}]`
-            );
-          }
-        }, miningInterval);
+    // Mine the first block with the first member registration
+    blockchain.minePendingTransactions();
+
+    // Set up periodic mining based on the miningInterval after the first block is mined
+    setTimeout(() => {
+      setInterval(() => {
+        if (blockchain.miningQueue.length > 0) {
+          console.info("Triggering automatic mining...");
+          blockchain.minePendingTransactions();
+        } else {
+          const timestamp = new Date().toISOString();
+          console.info(
+            `No transactions in the mining queue. Skipping mining. [${timestamp}]`
+          );
+        }
       }, miningInterval);
+    }, miningInterval);
 
-      startAPIServer(blockchain, name); // Pass the blockchain instance and first member's name to the API server
+    startAPIServer(blockchain, answers.name); // Pass the blockchain instance and first member's name to the API server
 
-      rl.close();
-    });
+    rl.close();
   });
 }
 

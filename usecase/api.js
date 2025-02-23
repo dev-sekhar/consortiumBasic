@@ -1,5 +1,6 @@
 const express = require("express");
-const cors = require("cors"); // Import the CORS middleware
+const cors = require("cors");
+const path = require("path");
 const fs = require("fs");
 const { Chaincode } = require("./chaincode");
 const Blockchain = require("../core/blockchain");
@@ -20,10 +21,61 @@ function startAPIServer(blockchain) {
   app.use(cors()); // Enable CORS
   app.use(express.json());
 
-  // Read member attributes from JSON file
-  const memberAttributes = JSON.parse(
-    fs.readFileSync("./usecase/data/memberAttributes.json", "utf8")
-  ).attributes;
+  // Serve static files from the UI directory
+  app.use(express.static(path.join(__dirname, "../UI")));
+
+  // Serve memberAttributes.json directly
+  app.get("/memberAttributes", (req, res) => {
+    res.sendFile(path.join(__dirname, "data/memberAttributes.json"));
+  });
+
+  // Register member endpoint
+  app.post("/member", async (req, res) => {
+    try {
+      const memberDetails = req.body;
+      console.log("api.js - Registering member:", memberDetails); // Log the member details received
+      const result = await registerMember(
+        blockchain,
+        memberDetails.memberType,
+        memberDetails
+      );
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("api.js - Error registering member:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Reject transaction endpoint
+  app.post("/reject-transaction", async (req, res) => {
+    try {
+      const { memberName, transactionId, reason } = req.body;
+      console.log(
+        `api.js - Rejecting member: ${memberName} Transaction ID: ${transactionId} Reason: ${reason}`
+      ); // Log the rejection details
+      const result = await rejectTransaction(
+        blockchain,
+        memberName,
+        transactionId,
+        reason
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      console.error("api.js - Error rejecting transaction:", error);
+      res.status(400).json({ error: "Bad request" });
+    }
+  });
+
+  // Define other API routes
+  app.get("/approved-members", (req, res) => {
+    try {
+      const approvedMembers = getApprovedMembers(blockchain);
+      res.status(200).json(approvedMembers);
+    } catch (error) {
+      console.error("api.js - Error retrieving approved members:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   /**
    * @route POST /transaction
@@ -111,51 +163,6 @@ function startAPIServer(blockchain) {
   });
 
   /**
-   * @route POST /member
-   * @desc Adds a new member to the blockchain.
-   * @param {string} memberType - The type of the member (e.g., "second").
-   * @param {string} name - The name of the member.
-   * @param {object} attributes - The attributes of the member.
-   * @returns {object} - A success message or an error object.
-   * @throws {Error} - If there's an issue adding the member.
-   */
-  app.post("/member", async (req, res) => {
-    try {
-      const { memberType, name, ...attributes } = req.body;
-
-      if (!memberType || !name) {
-        return res
-          .status(400)
-          .json({ error: "Missing required fields (memberType, name)" });
-      }
-
-      // Validate attributes
-      const missingAttributes = memberAttributes.filter(
-        (attr) => !attributes.hasOwnProperty(attr)
-      );
-      if (missingAttributes.length > 0) {
-        return res
-          .status(400)
-          .json({
-            error: `Missing required attributes: ${missingAttributes.join(
-              ", "
-            )}`,
-          });
-      }
-
-      const result = await registerMember(blockchain, memberType, {
-        name,
-        ...attributes,
-      });
-
-      res.status(201).json(result);
-    } catch (error) {
-      console.error("API: Error creating member:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  /**
    * @route POST /approve-transaction
    * @desc Approves a pending transaction.
    * @param {string} memberName - The name of the member approving the transaction.
@@ -182,56 +189,6 @@ function startAPIServer(blockchain) {
       res.status(200).json(result);
     } catch (error) {
       console.error("API: Error approving transaction:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  /**
-   * @route POST /reject-transaction
-   * @desc Rejects a pending transaction.
-   * @param {string} memberName - The name of the member rejecting the transaction.
-   * @param {string} transactionId - The ID of the transaction to reject.
-   * @param {string} reason - The reason for rejecting the transaction.
-   * @returns {object} - A success message or an error object.
-   * @throws {Error} - If there's an issue rejecting the transaction.
-   */
-  app.post("/reject-transaction", async (req, res) => {
-    try {
-      const { memberName, transactionId, reason } = req.body;
-
-      if (!memberName || !transactionId || !reason) {
-        return res.status(400).json({
-          error: "Missing required fields (memberName, transactionId, reason)",
-        });
-      }
-
-      const result = await rejectTransaction(
-        blockchain,
-        memberName,
-        transactionId,
-        reason
-      );
-
-      res.status(200).json(result);
-    } catch (error) {
-      console.error("API: Error rejecting transaction:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  /**
-   * @route GET /approved-members
-   * @desc Retrieves the list of approved members.
-   * @returns {array} - An array of approved members.
-   * @throws {Error} - If there's an error retrieving the approved members.
-   */
-  app.get("/approved-members", (req, res) => {
-    try {
-      const approvedMembers = getApprovedMembers(blockchain);
-
-      res.json(approvedMembers);
-    } catch (error) {
-      console.error("Error getting approved members:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -279,6 +236,10 @@ function startAPIServer(blockchain) {
   app.get("/mining-queue", (req, res) => {
     try {
       const miningQueue = getMiningQueue(blockchain);
+      console.info(
+        "Mining queue retrieved:",
+        JSON.stringify(miningQueue, null, 2)
+      ); // Log the mining queue
       res.json(miningQueue);
     } catch (error) {
       console.error("Error getting mining queue:", error);
